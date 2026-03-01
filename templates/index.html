@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 </head>
-<body class="bg-dark text-light">
+<body class="bg-dark text-light" onload="cargarHistorial()">
     
     <nav class="navbar navbar-expand-lg navbar-dark bg-secondary mb-4 shadow">
         <div class="container">
@@ -19,63 +19,69 @@
     <div class="container">
         <div class="row mb-4">
             <div class="col-12 text-center">
-                <h1 class="display-5 fw-bold">Bienvenido a tu Portal de Autogestión Cloud</h1>
-                <p class="lead text-muted">Aprovisionamiento y control de infraestructura como código.</p>
+                <h1 class="display-5 fw-bold text-info">Portal de Autogestión Cloud</h1>
+                <p class="lead text-muted">Aprovisionamiento y auditoría con persistencia en PostgreSQL.</p>
             </div>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card bg-dark border-secondary h-100 shadow-sm">
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card bg-dark border-info h-100 shadow-sm">
                     <div class="card-body text-center">
                         <i class="bi bi-microsoft text-info display-4"></i>
-                        <h5 class="card-title mt-3 text-light">Infraestructura Base</h5>
-                        <p class="card-text text-muted">Audita y descubre los grupos de recursos de la suscripción.</p>
-                        
+                        <h5 class="card-title mt-3 text-light">Auditoría de Azure</h5>
+                        <p class="card-text text-muted">Descubre los grupos de recursos de la suscripción.</p>
                         <button class="btn btn-outline-info w-100" onclick="cargarRecursos()">Consultar Infraestructura</button>
-                        
                         <div id="resultado-azure" class="mt-3 text-start small"></div>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card bg-dark border-secondary h-100 shadow-sm">
+            <div class="col-md-6">
+                <div class="card bg-dark border-warning h-100 shadow-sm">
                     <div class="card-body text-center">
-                        <i class="bi bi-box-seam text-warning display-4"></i>
-                        <h5 class="card-title mt-3 text-light">Contenedores</h5>
-                        <p class="card-text text-muted">Gestiona tus imágenes de Docker y despliegues activos.</p>
-                        <button class="btn btn-outline-warning w-100">Ver Catálogo</button>
+                        <i class="bi bi-server text-warning display-4"></i>
+                        <h5 class="card-title mt-3 text-light">Nuevo Despliegue</h5>
+                        <p class="card-text text-muted">Simula la creación de una Máquina Virtual y guárdala en la BD.</p>
+                        <button class="btn btn-warning w-100 fw-bold" onclick="crearRecurso()">🚀 Desplegar VM Linux</button>
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-4">
-                <div class="card bg-dark border-secondary h-100 shadow-sm">
-                    <div class="card-body text-center">
-                        <i class="bi bi-shield-lock text-success display-4"></i>
-                        <h5 class="card-title mt-3 text-light">Seguridad & Redes</h5>
-                        <p class="card-text text-muted">Auditoría de reglas NSG, firewalls y enrutamiento privado.</p>
-                        <button class="btn btn-outline-success w-100">Revisar Políticas</button>
-                    </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <h3 class="border-bottom border-secondary pb-2 mb-3"><i class="bi bi-database"></i> Historial de Operaciones (PostgreSQL)</h3>
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-hover border border-secondary">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Recurso Desplegado</th>
+                                <th>Estado</th>
+                                <th>Fecha (UTC)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-historial">
+                            </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+    // Función 1: Leer suscripción de Azure
     async function cargarRecursos() {
         const div = document.getElementById('resultado-azure');
-        div.innerHTML = '<span class="spinner-border text-info spinner-border-sm"></span> Conectando con Azure...';
-        
+        div.innerHTML = '<span class="spinner-border text-info spinner-border-sm"></span> Conectando...';
         try {
             const response = await fetch('/api/recursos');
             const data = await response.json();
-            
             if(data.estado === 'éxito') {
                 let html = '<ul class="list-group list-group-flush border border-secondary rounded mt-2">';
                 data.recursos.forEach(r => {
-                    html += `<li class="list-group-item bg-dark text-info border-secondary"><i class="bi bi-box"></i> ${r.nombre} <span class="text-muted">(${r.ubicacion})</span></li>`;
+                    html += `<li class="list-group-item bg-dark text-info border-secondary"><i class="bi bi-box"></i> ${r.nombre}</li>`;
                 });
                 html += '</ul>';
                 div.innerHTML = html;
@@ -83,7 +89,44 @@
                 div.innerHTML = `<div class="alert alert-danger p-2 border-0 mt-2">${data.detalle}</div>`;
             }
         } catch (e) {
-            div.innerHTML = '<div class="alert alert-danger p-2 border-0 mt-2">Error de conexión al API local.</div>';
+            div.innerHTML = '<div class="alert alert-danger p-2 border-0 mt-2">Error de red.</div>';
+        }
+    }
+
+    // Función 2: Escribir en la Base de Datos
+    async function crearRecurso() {
+        // Generamos un nombre aleatorio para la VM
+        const randomId = Math.floor(Math.random() * 1000);
+        const nombreVM = `Ubuntu-Server-${randomId}`;
+        
+        await fetch(`/api/desplegar/${nombreVM}`, { method: 'POST' });
+        cargarHistorial(); // Refrescamos la tabla inmediatamente
+    }
+
+    // Función 3: Leer la Base de Datos
+    async function cargarHistorial() {
+        const tbody = document.getElementById('tabla-historial');
+        try {
+            const response = await fetch('/api/historial');
+            const data = await response.json();
+            
+            tbody.innerHTML = '';
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay registros en la base de datos aún.</td></tr>';
+            } else {
+                data.forEach(fila => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${fila.id}</td>
+                            <td class="text-warning fw-bold"><i class="bi bi-hdd-network"></i> ${fila.recurso}</td>
+                            <td><span class="badge bg-success">${fila.estado}</span></td>
+                            <td class="text-muted">${fila.fecha}</td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al conectar con PostgreSQL.</td></tr>';
         }
     }
     </script>
